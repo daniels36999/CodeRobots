@@ -1,0 +1,189 @@
+       %UNIVERSIDAD NACIONAL DE CHIMBORAZO
+            %FACULTAD DE INGENIERIA
+  %ESCUELA DE ELECTRONICA Y TELECOMUNICACIONES
+
+% Nombre: Daniel Yautibug
+% Fecha: 19-07-2020
+%-----------------------------------------------------
+                 %ROBOT SCARA
+%-----------------------------------------------------
+clc
+clear
+close all
+
+%LONGITUDES ENTRE ARTICULACIONES
+%---------------------------------
+L1 = 7;
+L2 = 5;
+L3 = 5;
+
+ESCALA=15;
+
+%VARIABLES DE TRAYECTORIA 
+%----------------------------------------------
+Nmax=180;       %DESPLAZAMIENTO
+Fs=10;          %SALTOS DEL DESPLAZAMIENTO
+t=0:Fs:Nmax;    %INTERVALO DE IDA
+t1=Nmax:-Fs:0;  %INTERVALO DE REGRESO
+tmax=length(t); %TAMAÑO DE LOS VECTORES
+
+TE1=zeros(1,length(t));  %VECTOR VACIO ARTICULACION 1
+TE1I=zeros(1,length(t)); %VECTOR VACIO ARTICULACION REGRESO
+TE2=zeros(1,length(t));  %VECTOR VACIO ARTICULACION 2
+D1=zeros(1,length(t));   %VECTOR VACIO ARTICULACION 3
+D2=zeros(1,length(t));   %VECTOR VACIO ARTICULACION 3
+D3=zeros(1,length(t));   %VECTOR VACIO ARTICULACION 3
+Vacio=zeros(1,length(t));%VECTOR VACIO 
+
+n=1;%CONTADOR
+    while 1
+        TE1(n)= t(n);   %VECTOR DE IDA
+        TE1I(n)= t1(n); %VECTOR DE REGRESO
+        TE2(n)= 0;      %VECTOR DE IDA
+        D1(n) = 1;      %DESPLAZAMIENTO 1
+        D2(n) = 2;      %DESPLAZAMIENTO 2
+        D3(n) = 3;      %DESPLAZAMIENTO 3
+        Vacio(n)=0;
+        if n==tmax
+            break;
+        end        
+        n=n+1;
+    end
+    
+%VARIABLES A DESPLAZR AL ROBOT - 1
+%----------------------------------------------------
+THETA1 = [TE1,TE1I,Vacio]; %VARIABLE ARTICULACION 1
+THETA2= [TE2,TE2,Vacio];   %VARIABLE ARTICULACION 2
+d=[D1,D2,D3];              %VARIABLE ARTICULACION 3
+
+%VARIABLES A DESPLAZR AL ROBOT - 2
+%----------------------------------------------------
+% THETA1 = 0:10:180;  %VARIABLE ARTICULACION 1
+% THETA2= 0:10:180; %VARIABLE ARTICULACION 2
+% d=0:0.1:1.8;        %VARIABLE ARTICULACION 3
+
+%PROCESO DE DESPLAZAMIENTO
+%------------------------------------------------------
+for i=1:length(d)
+
+THETA1(i) = THETA1(i)*pi/180; %CONVERSION A RADIANES
+THETA2(i) = THETA2(i)*pi/180; %CONVERSION A RADIANES
+
+%MATRIZ DE ARTICULACION 1
+R10 = [cos(THETA1(i)) -sin(THETA1(i)) 0 0;sin(THETA1(i)) cos(THETA1(i)) 0 0;0 0 1 0;0 0 0 1];
+T10 = [1 0 0 L2*cos(THETA1(i));0 1 0 L2*sin(THETA1(i));0 0 1 L1; 0 0 0 1];
+A10 = T10*R10;
+
+%MATRIZ DE ARTICULACION 2
+R21 = [cos(THETA2(i)) sin(THETA2(i)) 0 0;sin(THETA2(i)) -cos(THETA2(i)) 0 0;0 0 -1 0;0 0 0 1];
+T21 = [1 0 0 L3*cos(THETA2(i));0 1 0 L3*sin(THETA2(i));0 0 1 0; 0 0 0 1];
+A21 = T21*R21;
+
+%MATRIZ DE ARTICULACION 3
+R32 = eye(4);
+T32 = [1 0 0 0;0 1 0 0;0 0 1 d(i); 0 0 0 1];
+A32 = T32*R32;
+
+%MULTIPLICACION DE LAS MATRICES DE CADA LINEA
+T4 = A10*A21*A32; %PUNTO FINAL
+T3 = A10*A21;     %PUNTO DE LA ARTICULACION 2
+T2 = A10;         %PUNTO DE LA ARTICULACION 3
+
+P0 = [0 0 0];   %PUNTO INICIAL DEL ROBOT
+P1 = [0 0 L1];  %PUNT INICIAL DE LA ARTICULACION 1
+P2 = [T2(1,4) T2(2,4) T2(3,4)]; %PUNTO INICIAL DE LA ARTICULACION 2
+P3 = [T3(1,4) T3(2,4) T3(3,4)]; %PUNTO INICIAL DE LA ARTICULACION 3
+P4 = [T4(1,4) T4(2,4) T4(3,4)]; %PUNTO DE LA POSISION FINAL
+
+P = [P0;P1;P2;P3;P4]; %VECTOR DE TODAS LAS ARTICULACIONES
+X = P(:,1); %TOMA CIERTO VALOR PARA X
+Y = P(:,2); %TOMA CIERTO VALOR PARA Y
+Z = P(:,3); %TOMA CIERTO VALOR PARA Z
+
+X1(i)= X(5); %VECTOR GUARDAR LA TRAYECTORIA EN X
+Y1(i)= Y(5); %VECTOR GUARDAR LA TRAYECTORIA EN Y
+Z1(i)= Z(5); %VECTOR GUARDAR LA TRAYECTORIA EN Z
+
+figure(1) %GRAFICA
+plot3(X(1:2),Y(1:2),Z(1:2),'g','linewidth',5)%ARTICULACION 0 - 1
+hold on  %ACTIVA LAS GRAFICAS SIGUIENTES
+view(35,19); axis square;      %VISUALIZA OBJETOS
+Objeto([X(5),Y(5),Z(5)-2],1,2);%GRAFICA OBJETO
+Mesa([-13,-3,0],6,6,1)         %GRAFICA DE LA MESA
+plot3(X(2:3),Y(2:3),Z(2:3),'r','linewidth',3)%ARTICULACION 1 - 2
+plot3(X(3:4),Y(3:4),Z(3:4),'r','linewidth',3)%ARTICULACION 2 - 3
+plot3(X(4:5),Y(4:5),Z(4:5),'r','linewidth',3)%ARTICULACION 3 - FINAL
+plot3(P0(1),P0(2),P0(3),'bo','linewidth',4)%BASE
+plot3(P1(1),P1(2),P1(3),'bo','linewidth',4)%ARTICULACION 1
+plot3(P2(1),P2(2),P2(3),'bo','linewidth',4)%ARTICULACION 2
+plot3(P3(1),P3(2),P3(3),'bo','linewidth',4)%ARTICULACION 3
+plot3(X(5),Y(5),Z(5),'O')%PUNTO DEZPLAZADO FINAL
+plot3(X1,Y1,Z1,'m','linewidth',1)%GRAFICA DE SU TRAYETCORIA
+axis([-ESCALA ESCALA -ESCALA ESCALA 0 ESCALA]);%ACODICIONAMIENTO DE LOS EJES
+title('ROBOT SCARA')%TITULO
+xlabel('EJE X') %EJE X
+ylabel('EJE Y') %EJE Y
+zlabel('EJE Z') %EJE Z
+grid on    %LINEAS DE LOS EJES
+pause(0.25)%PAUSA DE 0.25 SEGUNDOS
+hold off   %APAGAMOS LAS LINEAS DE LOS EJES
+end
+
+%FUNCION DE GRAFICA DEL OBJETO
+%-----------------------------------------------------
+function Objeto(tam,bk,cao)
+    phi = 0:30:360;  %VARISBLE DEL RADIO
+    phi = phi*pi/180;%CONVERSION A RADIANES
+    diem = zeros(length(phi),1);%MATRIZ VACIA
+    diem(:,3) = tam(3); %TOMAMOS LA COLUMNA PARA GRAFICAR
+    j = 1;%CONTADOR
+    for i = phi
+        diem(j,1) = tam(1) + bk*cos(i);
+        diem(j,2) = tam(2) + bk*sin(i);
+        j = j+1;
+    end
+    diem2 = diem;
+    diem2(:,3) = tam(3) + cao;
+    len = length(phi);
+    lw = 1;
+    clr = [0 1 0];
+    for i = 1:len
+        if i == len
+            draw_line(diem(i,:)',diem(1,:)',lw,clr);
+            draw_line(diem2(i,:)',diem2(1,:)',lw,clr);
+        else
+            draw_line(diem(i,:)',diem(i+1,:)',lw,clr);
+            draw_line(diem2(i,:)',diem2(i+1,:)',lw,clr);
+        end
+        draw_line([diem2(i,1);diem2(i,2);diem2(1,3)],[diem(i,1);diem(i,2);diem(1,3)],lw,clr)
+    end    
+end
+function draw_line(p1, p2, lw, clr)
+line([p1(1,1),p2(1,1)],[p1(2,1),p2(2,1)],[p1(3,1),p2(3,1)],'LineWidth',lw,'Color',clr);
+end
+
+%FUNCION DE GRAFICA DEL MESA
+%-----------------------------------------------------
+function Mesa(diemdat,dai,rong,cao)
+    dd = [diemdat(1);diemdat(2);diemdat(3)+cao];
+    r = [diemdat(1) + rong;diemdat(2);diemdat(3)+cao];
+    d1 = [diemdat(1);diemdat(2) + dai;diemdat(3)+cao];
+    d2 = [r(1);r(2) + dai;r(3)];
+    c1 = [dd(1) ;dd(2);dd(3) - cao];
+    c2 = [r(1) ;r(2);r(3) - cao];
+    c3 = [d1(1) ;d1(2);d1(3) - cao];
+    c4 = [d2(1) ;d2(2);d2(3) - cao];
+    lw = 1;
+    clr = [0 0 0];
+    draw_line1(dd,r,lw,clr);
+    draw_line1(r,d2,lw,clr);
+    draw_line1(dd,d1,lw,clr);
+    draw_line1(d1,d2,lw,clr);
+    draw_line1(dd,c1,lw,clr);
+    draw_line1(r,c2,lw,clr);
+    draw_line1(d1,c3,lw,clr);
+    draw_line1(d2,c4,lw,clr);
+end
+function draw_line1(p1, p2, lw, clr)
+line([p1(1,1),p2(1,1)],[p1(2,1),p2(2,1)],[p1(3,1),p2(3,1)],'LineWidth',lw,'Color',clr);
+end
